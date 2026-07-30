@@ -1,0 +1,107 @@
+{
+  "enable": {
+    "type": "bool",
+    "description": "启用插件",
+    "default": true,
+    "hint": "开启或关闭元认知调控插件。"
+  },
+  "k_rounds": {
+    "type": "int",
+    "description": "检查间隔轮数 (k)",
+    "default": 5,
+    "hint": "每完成 k 轮对话时自动触发一次质量检查。"
+  },
+  "n_context_rounds": {
+    "type": "int",
+    "description": "参考上下文轮数 (n)",
+    "default": 3,
+    "hint": "检查时额外参考的前置对话轮数 (n)。模型将了解最近 k+n 轮对话背景，专门评估最近 k 轮的表现。"
+  },
+  "ttl_rounds": {
+    "type": "int",
+    "description": "规则有效轮数",
+    "default": 10,
+    "hint": "新调整规则的默认有效轮数，到期无新问题自动解除。"
+  },
+  "max_active_directives": {
+    "type": "int",
+    "description": "最大生效规则数",
+    "default": 3,
+    "hint": "同一个聊天中最多同时生效的调整规则数量。"
+  },
+  "supervisor_provider_id": {
+    "type": "string",
+    "description": "质量检查模型 (Provider)",
+    "default": "",
+    "_special": "select_provider",
+    "hint": "专门用于对话质量检查的 AI 模型（留空则默认使用当前聊天模型）。"
+  },
+  "supervisor_prompt_template": {
+    "type": "string",
+    "description": "质量检查 Prompt 提示词模板",
+    "default": "",
+    "hint": "用于引导质量检查模型分析对话的提示词模板。留空则使用内置默认模板。支持变量: {n_count}, {k_count}, {trigger_reason}, {constraints_desc}, {directives_text}, {prior_text}, {target_text}, {history_text}。"
+  },
+  "enable_sentinel_heuristics": {
+    "type": "bool",
+    "description": "启用自动预警检测",
+    "default": true,
+    "hint": "开启后自动检测句首重复、表达相似度与争吵信号。关闭后仅在满 k 轮对话时（以及硬性禁用词命中时）才触发质量检查。"
+  },
+  "sentinel_sensitivity": {
+    "type": "string",
+    "description": "自动检测敏感度",
+    "default": "medium",
+    "options": [
+      "low",
+      "medium",
+      "high"
+    ],
+    "labels": [
+      "低敏感度 (宽松)",
+      "中敏感度 (标准推荐)",
+      "高敏感度 (严格)"
+    ],
+    "hint": "自动检测重复句首、表达相似、字数单调与争吵信号的敏感程度。"
+  },
+  "constraints": {
+    "type": "list",
+    "description": "质量检查规则表",
+    "default": [
+      {
+        "id": "style_homogeneity",
+        "name": "回复表达重复",
+        "playbook": "style_homogeneity",
+        "description": "避免频繁重复相同的句首词、句式或套路化口头禅"
+      },
+      {
+        "id": "meaningless_argument",
+        "name": "情绪化辩驳",
+        "playbook": "meaningless_argument",
+        "description": "避免与用户进入互相反问、机械式回驳或无意义争吵"
+      }
+    ],
+    "hint": "检查模型核查的规则列表。推荐在下方管理界面中更直观地添加与编辑。"
+  },
+  "banned_phrases": {
+    "type": "list",
+    "description": "硬性禁用词表",
+    "items": {
+      "type": "string"
+    },
+    "default": [],
+    "hint": "包含这些词汇时将直接触发拦截并提示，避免发给用户。"
+  },
+  "verbose": {
+    "type": "bool",
+    "description": "发送调整通知",
+    "default": false,
+    "hint": "开启后，生成新规则或解除规则时会在聊天中发送简短通知。"
+  },
+  "clear_directives_on_reset": {
+    "type": "bool",
+    "description": "重置聊天时清空规则",
+    "default": false,
+    "hint": "输入 /reset 或 /new 重置对话时是否同步清空已生成的调整规则。"
+  }
+}

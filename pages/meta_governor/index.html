@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>元认知调控 - 管理面板</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 头部导航栏 -->
+        <header class="app-header">
+            <div class="header-left">
+                <span class="back-btn" id="back-btn">← 返回</span>
+                <img src="./logo.png" id="plugin-logo-img" alt="logo" class="header-logo-img" onerror="this.src='../../logo.png'">
+                <h1 class="page-title">元认知调控</h1>
+                <span class="plugin-version">v1.0.0</span>
+            </div>
+            <div class="header-right">
+                <div class="tab-nav">
+                    <button class="tab-btn active" data-tab="memos">
+                        <i data-lucide="activity" class="tab-icon"></i>
+                        <span>运行状态与记录</span>
+                    </button>
+                    <button class="tab-btn" data-tab="rules">
+                        <i data-lucide="shield-alert" class="tab-icon"></i>
+                        <span>触发规则与禁用词</span>
+                    </button>
+                    <button class="tab-btn" data-tab="settings">
+                        <i data-lucide="settings" class="tab-icon"></i>
+                        <span>系统设置</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主内容区域 -->
+        <main class="app-content">
+            <!-- 视图 1：运行状态与评估日志 -->
+            <section id="view-memos" class="tab-view active">
+                
+                <!-- 统计面板 Grid -->
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <span class="stat-label">生效规则数</span>
+                        <span class="stat-value" id="stat-active-dirs">0</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">已记录对话轮次</span>
+                        <span class="stat-value" id="stat-total-rounds">0</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">上次检查轮次</span>
+                        <span class="stat-value" id="stat-last-eval">0</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">常驻规则数</span>
+                        <span class="stat-value" id="stat-charter-count">0</span>
+                    </div>
+                </div>
+
+                <!-- 活跃干预指令与常驻宪章卡片 -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-header-title-group">
+                            <i data-lucide="brain-circuit" class="card-header-icon"></i>
+                            <h2 class="card-title">当前生效中的调整规则与常驻规则</h2>
+                        </div>
+                        <button class="btn btn-primary" id="btn-trigger-eval">
+                            <i data-lucide="zap" class="btn-icon"></i>
+                            <span>手动触发检查</span>
+                        </button>
+                    </div>
+                    <div class="card-body table-responsive">
+                        <table class="memos-table">
+                            <thead>
+                                <tr>
+                                    <th>规则 ID</th>
+                                    <th>所属会话 (UMO)</th>
+                                    <th>规则分类</th>
+                                    <th>调整规则内容</th>
+                                    <th>规则状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="directives-body">
+                                <tr>
+                                    <td colspan="6" class="table-empty">暂无调整规则与常驻规则。</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 监控会话隔离卡片 -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-header-title-group">
+                            <i data-lucide="layers" class="card-header-icon"></i>
+                            <h2 class="card-title">聊天窗口列表与管理</h2>
+                        </div>
+                    </div>
+                    <div class="card-body table-responsive">
+                        <table class="memos-table">
+                            <thead>
+                                <tr>
+                                    <th>会话标识 (UMO)</th>
+                                    <th>已记录对话轮数</th>
+                                    <th>上次检查轮次</th>
+                                    <th>生效规则数</th>
+                                    <th>状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sessions-body">
+                                <tr>
+                                    <td colspan="6" class="table-empty">暂无聊天窗口记录。</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 评估历史日志卡片 -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-header-title-group">
+                            <i data-lucide="file-text" class="card-header-icon"></i>
+                            <h2 class="card-title">历史质量检查日志</h2>
+                        </div>
+                    </div>
+                    <div class="card-body table-responsive">
+                        <table class="memos-table">
+                            <thead>
+                                <tr>
+                                    <th>检查时间</th>
+                                    <th>对话轮次</th>
+                                    <th>触发原因 / 提示</th>
+                                    <th>检查结论摘要</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logs-body">
+                                <tr>
+                                    <td colspan="4" class="table-empty">暂无历史检查记录。</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- 视图 2：规则与哨兵策略 -->
+            <section id="view-rules" class="tab-view">
+                
+                <!-- 监督约束清单卡片 -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-header-title-group">
+                            <i data-lucide="clipboard-list" class="card-header-icon"></i>
+                            <h2 class="card-title">质量检查规则清单 (Constraints)</h2>
+                        </div>
+                        <button class="btn btn-primary" id="btn-add-constraint">
+                            <i data-lucide="plus" class="btn-icon"></i>
+                            <span>新增检查规则</span>
+                        </button>
+                    </div>
+                    <div class="card-body table-responsive">
+                        <table class="memos-table">
+                            <thead>
+                                <tr>
+                                    <th>规则 ID</th>
+                                    <th>规则名称</th>
+                                    <th>规则模式</th>
+                                    <th>规则具体描述与检查要点</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="constraints-body">
+                                <tr>
+                                    <td colspan="5" class="table-empty">暂无检查规则。</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 本地硬性禁用词表卡片 -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-header-title-group">
+                            <i data-lucide="ban" class="card-header-icon"></i>
+                            <h2 class="card-title">硬性禁用词表 (Banned Phrases)</h2>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
+                                <input type="text" id="banned-phrase-input" class="form-control" placeholder="输入要禁用的词汇或短语，按 Enter 或点击添加" style="flex: 1;">
+                                <button class="btn btn-primary" id="btn-add-banned">
+                                    <i data-lucide="plus" class="btn-icon"></i>
+                                    <span>添加禁用词</span>
+                                </button>
+                            </div>
+                            <span class="form-hint">包含这些词汇时将直接触发拦截并提示，避免发给用户。</span>
+                        </div>
+                        <div class="tags-container" id="banned-phrases-list">
+                            <span style="color: var(--text-secondary); font-size: 13px;">暂无硬性禁用词。</span>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- 视图 3：插件设置 -->
+            <section id="view-settings" class="tab-view">
+                <form id="config-form" onsubmit="return false;">
+                    <div class="settings-tab-layout">
+                        <!-- 左侧子选项卡 -->
+                        <aside class="settings-sidebar">
+                            <button type="button" class="sub-tab-btn active" data-sub-tab="general">
+                                <span>基础与节拍配置</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" data-sub-tab="supervisor">
+                                <span>质量检查模型与 Prompt</span>
+                            </button>
+                            <button type="button" class="sub-tab-btn" data-sub-tab="sentinel">
+                                <span>自动检测与通知</span>
+                            </button>
+                        </aside>
+
+                        <!-- 右侧设置内容 -->
+                        <div class="settings-content-area card" style="padding: 28px;">
+                            
+                            <!-- 子面板 1: 基础与节拍 -->
+                            <div id="sub-tab-content-general" class="sub-tab-content active">
+                                <div class="form-group">
+                                    <label class="switch-label">
+                                        <div>
+                                            <div class="form-label">启用元认知调控</div>
+                                            <div class="form-hint">开启或关闭对话质量自动检测与元认知调控。</div>
+                                        </div>
+                                        <label class="switch">
+                                            <input type="checkbox" id="cfg-enable" checked>
+                                            <span class="slider"></span>
+                                        </label>
+                                    </label>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="cfg-k-rounds">检查间隔轮数 (k)</label>
+                                    <input type="number" id="cfg-k-rounds" class="form-control" min="1" max="50" value="5">
+                                    <span class="form-hint">每完成 k 轮对话时自动触发一次质量检查。</span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="cfg-n-context-rounds">参考上下文轮数 (n)</label>
+                                    <input type="number" id="cfg-n-context-rounds" class="form-control" min="0" max="20" value="3">
+                                    <span class="form-hint">检查时额外参考的前置对话轮数 (n)。模型将了解最近 k+n 轮对话背景，专门评估最近 k 轮的表现。</span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="cfg-ttl-rounds">多轮规则默认有效轮数</label>
+                                    <input type="number" id="cfg-ttl-rounds" class="form-control" min="1" max="100" value="10">
+                                    <span class="form-hint">多轮调整规则的默认有效轮数，到期无新问题自动解除。</span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="cfg-max-active">最大生效规则数</label>
+                                    <input type="number" id="cfg-max-active" class="form-control" min="1" max="10" value="3">
+                                    <span class="form-hint">同一个聊天中最多同时生效的调整规则数量。超出将自动覆盖最旧规则。</span>
+                                </div>
+                            </div>
+
+                            <!-- 子面板 2: 质量检查模型与 Prompt -->
+                            <div id="sub-tab-content-supervisor" class="sub-tab-content">
+                                <div class="form-group">
+                                    <label class="form-label">质量检查模型 (Provider)</label>
+                                    <div class="custom-select" id="select-supervisor-provider">
+                                        <div class="custom-select-trigger">
+                                            <span class="custom-select-value">跟随当前聊天模型 (默认)</span>
+                                            <i data-lucide="chevron-down" style="width:16px; height:16px;"></i>
+                                        </div>
+                                        <div class="custom-select-options" id="provider-options-list">
+                                            <div class="custom-option selected" data-value="">跟随当前聊天模型 (默认)</div>
+                                        </div>
+                                    </div>
+                                    <span class="form-hint">专门用于对话质量检查的 AI 模型。推荐选择不同提供商的模型以避免同源思维盲区。</span>
+                                </div>
+
+                                <div class="form-group" style="margin-top: 20px;">
+                                    <label class="form-label" for="cfg-supervisor-prompt">质量检查 Prompt 提示词模板</label>
+                                    <textarea id="cfg-supervisor-prompt" class="form-control" rows="12" placeholder="留空则自动使用系统内置默认提示词模板"></textarea>
+                                    <span class="form-hint">自定义引导检查模型评估对话的 Prompt。支持变量：{n_count}, {k_count}, {trigger_reason}, {constraints_desc}, {directives_text}, {prior_text}, {target_text}, {history_text}。留空即自动复用系统默认 Prompt。</span>
+                                </div>
+                            </div>
+
+                            <!-- 子面板 3: 自动检测与通知 -->
+                            <div id="sub-tab-content-sentinel" class="sub-tab-content">
+                                <div class="form-group">
+                                    <label class="switch-label">
+                                        <div>
+                                            <div class="form-label">启用自动预警检测</div>
+                                            <div class="form-hint">开启后自动检测句首重复、表达相似度与争吵信号。关闭后仅在满 k 轮对话时（以及硬性禁用词命中时）才触发质量检查。</div>
+                                        </div>
+                                        <label class="switch">
+                                            <input type="checkbox" id="cfg-sentinel-heuristics" checked>
+                                            <span class="slider"></span>
+                                        </label>
+                                    </label>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">自动检测敏感度</label>
+                                    <div class="custom-select" id="select-sentinel-sensitivity">
+                                        <div class="custom-select-trigger">
+                                            <span class="custom-select-value">中敏感度 (标准推荐)</span>
+                                            <i data-lucide="chevron-down" style="width:16px; height:16px;"></i>
+                                        </div>
+                                        <div class="custom-select-options">
+                                            <div class="custom-option" data-value="low">低敏感度 (宽松)</div>
+                                            <div class="custom-option selected" data-value="medium">中敏感度 (标准推荐)</div>
+                                            <div class="custom-option" data-value="high">高敏感度 (严格)</div>
+                                        </div>
+                                    </div>
+                                    <span class="form-hint">自动检测句首重复、表达相似度、字数单调与争吵信号的敏感程度。</span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="switch-label">
+                                        <div>
+                                            <div class="form-label">发送调整通知</div>
+                                            <div class="form-hint">开启后，生成新规则或解除规则时会在聊天中发送简短通知。</div>
+                                        </div>
+                                        <label class="switch">
+                                            <input type="checkbox" id="cfg-verbose">
+                                            <span class="slider"></span>
+                                        </label>
+                                    </label>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="switch-label">
+                                        <div>
+                                            <div class="form-label">重置聊天时清空规则</div>
+                                            <div class="form-hint">当用户输入 /reset 或 /new 重置聊天时，是否同步清空已生成的调整规则。</div>
+                                        </div>
+                                        <label class="switch">
+                                            <input type="checkbox" id="cfg-reset-clear">
+                                            <span class="slider"></span>
+                                        </label>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- 保存按钮 -->
+                            <div style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                                <button type="button" class="btn btn-primary" id="btn-save-settings" style="width: 100%;">
+                                    <i data-lucide="save" class="btn-icon"></i>
+                                    <span>保存配置</span>
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+                </form>
+            </section>
+        </main>
+    </div>
+
+    <!-- 模态框 1：新增/编辑约束规则 Modal -->
+    <div class="modal-overlay" id="constraint-modal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="modal-title" id="constraint-modal-title">新增检查规则</h3>
+                <span class="modal-close" id="constraint-modal-close">×</span>
+            </div>
+            <div class="modal-body">
+                <form id="constraint-form">
+                    <div class="form-group">
+                        <label class="form-label" for="c-id">规则 ID</label>
+                        <input type="text" id="c-id" class="form-control" placeholder="例如：style_homogeneity 或 custom_tone">
+                        <span class="form-hint">唯一的规则标识符（支持字母、数字、下划线）。</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="c-name">规则名称</label>
+                        <input type="text" id="c-name" class="form-control" placeholder="例如：回复表达重复 或 语气控制">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">规则模式</label>
+                        <div class="custom-select" id="select-constraint-mode">
+                            <div class="custom-select-trigger">
+                                <span class="custom-select-value">自动 (AI 自主判断一次性/多轮)</span>
+                                <i data-lucide="chevron-down" style="width:16px; height:16px;"></i>
+                            </div>
+                            <div class="custom-select-options">
+                                <div class="custom-option selected" data-value="auto">自动 (AI 自主判断一次性/多轮)</div>
+                                <div class="custom-option" data-value="once">一次性 (仅生效 1 轮，适合转移话题/道歉)</div>
+                                <div class="custom-option" data-value="multi">多轮 (持续纠偏，适合口吻表达)</div>
+                            </div>
+                        </div>
+                        <span class="form-hint">“一次性”规则生效 1 轮后自动解除，“多轮”规则持续规范，“自动”由检查模型智能决定。</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="c-desc">规则具体描述与检查要点</label>
+                        <textarea id="c-desc" class="form-control" rows="4" placeholder="详细描述检查模型核查该规则时的关注要点"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="constraint-modal-cancel">取消</button>
+                <button class="btn btn-primary" id="constraint-modal-save">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框 2：确认删除 Modal -->
+    <div class="modal-overlay" id="confirm-modal">
+        <div class="modal-container" style="max-width: 420px;">
+            <div class="modal-header">
+                <h3 class="modal-title">确认操作</h3>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-modal-msg" style="font-size: 14px; line-height: 1.5; color: var(--text-primary);">确认要执行此删除操作吗？</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="confirm-modal-cancel">取消</button>
+                <button class="btn btn-primary btn-outline-danger" id="confirm-modal-ok">确定删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 提示条 -->
+    <div class="toast" id="toast"></div>
+
+    <script src="index.js"></script>
+</body>
+</html>
