@@ -80,7 +80,7 @@ async def _parse_req_body(request: Any = None) -> dict:
     "astrbot_plugin_meta_governor",
     "KitsuneiMomo",
     "元认知调控插件：AI 对话质量监督与回复调控，自动修正复读与语气问题",
-    "1.0.0",
+    "1.0.1",
 )
 class MetaGovernorPlugin(Star):
     """元认知调控插件 (Meta-Governor)"""

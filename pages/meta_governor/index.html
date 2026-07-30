@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>元认知调控 - 管理面板</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js" integrity="sha384-tTkFttkBclaU1cloKwOi9xk3pbao3VZxTjLNBt8iFABWDBQibbAbWpVmO28zMuxq" crossorigin="anonymous"></script>
 </head>
 <body>
     <div class="app-container">
@@ -15,7 +15,7 @@
                 <span class="back-btn" id="back-btn">← 返回</span>
                 <img src="./logo.png" id="plugin-logo-img" alt="logo" class="header-logo-img" onerror="this.src='../../logo.png'">
                 <h1 class="page-title">元认知调控</h1>
-                <span class="plugin-version">v1.0.0</span>
+                <span class="plugin-version">v1.0.1</span>
             </div>
             <div class="header-right">
                 <div class="tab-nav">
@@ -290,8 +290,14 @@
                                 </div>
 
                                 <div class="form-group" style="margin-top: 20px;">
-                                    <label class="form-label" for="cfg-supervisor-prompt">质量检查 Prompt 提示词模板</label>
-                                    <textarea id="cfg-supervisor-prompt" class="form-control" rows="12" placeholder="留空则自动使用系统内置默认提示词模板"></textarea>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                        <label class="form-label" for="cfg-supervisor-prompt" style="margin-bottom: 0;">质量检查 Prompt 提示词模板</label>
+                                        <button type="button" class="btn btn-sm btn-secondary" id="btn-fill-default-prompt" style="padding: 4px 10px; font-size: 12px;">
+                                            <i data-lucide="file-text" class="btn-icon" style="width: 14px; height: 14px;"></i>
+                                            <span>载入默认提示词</span>
+                                        </button>
+                                    </div>
+                                    <textarea id="cfg-supervisor-prompt" class="form-control" rows="14" placeholder="留空即使用系统内置默认提示词模板。点击右上角“载入默认提示词”可将默认模板填入进行微调。"></textarea>
                                     <span class="form-hint">自定义引导检查模型评估对话的 Prompt。支持变量：{n_count}, {k_count}, {trigger_reason}, {constraints_desc}, {directives_text}, {prior_text}, {target_text}, {history_text}。留空即自动复用系统默认 Prompt。</span>
                                 </div>
                             </div>

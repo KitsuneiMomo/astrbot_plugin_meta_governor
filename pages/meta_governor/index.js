@@ -17,6 +17,71 @@ async function init() {
     let currentProviders = [];
     let currentEditingConstraintId = null;
 
+    // Helper: HTML Escaping for XSS protection
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return "";
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    const DEFAULT_SUPERVISOR_PROMPT_TEMPLATE = `你是一个对话质量观察员，负责审查 AI 助手最近的表现并提供【针对性的温馨提醒与调整建议】。
+
+【工作原则】
+1. 默认输出为"无问题"。宁缺毋滥，仅在发现明确表达缺陷时才输出违规。
+2. 任何判定必须附上从对话中逐字引用的原文证据 (evidence)。
+3. 【拟人化提示格式】：在给出的改进建议 (suggestion) 中，严禁使用死板冷酷的控制命令（如‘避免...’、‘禁止...’）。
+   **必须统一采用“我发现你……，请……”的第1人称提醒口吻**，格式固定为：
+   \`"我发现你 [具体问题表现]，请 [具体调整动作]"\` (40字以内)。
+   示例好建议：
+   - "我发现你最近回答像在做严肃社论播报，请放轻松，多用自然的口语和语气词跟对方交流。"
+   - "我发现你连续重复回复了单字“测试”，请结合当前话题给出有实意的回答。"
+   - "我发现你与对方在无意义争吵，请礼貌收尾并主动转移话题。"
+4. 【规则模式 (mode)】：
+   - \`"once"\`：一次性提醒。适用于转移话题、主动收尾、总结、道歉等只应在接下来 1 轮中执行的单次动作。
+   - \`"multi"\`：多轮保持。适用于表达语气、口吻风格、性格调理等需要持续多轮保持的规范。
+5. 【场景区别】以下对话分为【参考上下文 (前 {n_count} 轮)】与【待检查对话 (最近 {k_count} 轮)】。
+   参考上下文仅用于帮助你理解话题背景，请专门检查和评估【最近 {k_count} 轮对话】中 AI 助手的表现！
+6. 请针对【当前生效中的规则】列表中的每一条规则，在 assessments 数组中显式提供判定 (verdict: improved|partial|not_improved|worse) 与引用证据。
+
+【检查触发原因与提示】
+{trigger_reason}
+
+【规则检查项清单】
+{constraints_desc}
+
+【当前生效中的调整规则】
+{directives_text}
+
+【参考上下文 (前 {n_count} 轮对话 - 仅供了解背景，不做判定)】
+{prior_text}
+
+【待检查对话 (最近 {k_count} 轮对话 - 重点检查对象)】
+{target_text}
+
+【历史检查摘要】
+{history_text}
+
+【输出格式】必须输出且仅输出严格 JSON 格式：
+{
+  "assessments": [
+    {"directive_id": "规则ID", "verdict": "improved|partial|not_improved|worse", "evidence": "逐字引用原文", "confidence": "high|low"}
+  ],
+  "violations": [
+    {
+      "constraint_id": "规则ID",
+      "severity": "medium|high",
+      "evidence": "逐字引用原文",
+      "suggestion": "我发现你...，请...（40字以内）",
+      "mode": "once|multi"
+    }
+  ]
+}
+无问题则两个数组都为空。`;
+
     // Main Tab Navigation
     const tabButtons = document.querySelectorAll(".tab-btn");
     const tabViews = document.querySelectorAll(".tab-view");
@@ -89,11 +154,16 @@ async function init() {
         const typeBadgeClass = isGroup ? "badge-info" : "badge-purple";
         const nameText = sessionName || targetId;
 
+        const safeUmo = escapeHtml(umo);
+        const safeSessionName = escapeHtml(sessionName || "");
+        const safeNameText = escapeHtml(nameText);
+        const safePlatform = escapeHtml(platform);
+
         return `
-            <div class="umo-cell" data-umo="${umo}" data-name="${sessionName || ''}" title="双击修改群名/备注 (留空恢复群号) | 原始 UMO: ${umo}">
+            <div class="umo-cell" data-umo="${safeUmo}" data-name="${safeSessionName}" title="双击修改群名/备注 (留空恢复群号) | 原始 UMO: ${safeUmo}">
                 <span class="badge ${typeBadgeClass}">${typeLabel}</span>
-                <strong class="umo-name" data-umo="${umo}">${nameText}</strong>
-                <span class="umo-platform">(${platform})</span>
+                <strong class="umo-name" data-umo="${safeUmo}">${safeNameText}</strong>
+                <span class="umo-platform">(${safePlatform})</span>
             </div>
         `;
     }
@@ -418,6 +488,18 @@ async function init() {
         }
     });
 
+    // Fill Default Prompt Template Button Action
+    const fillDefaultPromptBtn = document.getElementById("btn-fill-default-prompt");
+    if (fillDefaultPromptBtn) {
+        fillDefaultPromptBtn.addEventListener("click", () => {
+            const promptInput = document.getElementById("cfg-supervisor-prompt");
+            if (promptInput) {
+                promptInput.value = DEFAULT_SUPERVISOR_PROMPT_TEMPLATE;
+                showToast("已成功载入系统默认提示词模板");
+            }
+        });
+    }
+
     // Save Settings Form
     document.getElementById("btn-save-settings").addEventListener("click", async () => {
         const enable = document.getElementById("cfg-enable").checked;
@@ -534,7 +616,9 @@ async function init() {
                 const pId = typeof p === "string" ? p : p.id;
                 const pName = typeof p === "string" ? p : (p.name || p.id);
                 const isSel = pId === currentVal ? 'selected' : '';
-                html += `<div class="custom-option ${isSel}" data-value="${pId}">${pName} (${pId})</div>`;
+                const safePId = escapeHtml(pId);
+                const safePName = escapeHtml(pName);
+                html += `<div class="custom-option ${isSel}" data-value="${safePId}">${safePName} (${safePId})</div>`;
             });
         }
         listContainer.innerHTML = html;
@@ -611,13 +695,16 @@ async function init() {
 
         allDisplayItems.forEach(item => {
             const umoHtml = formatUmoDisplay(item.umo, item.sessionName);
+            const safeText = escapeHtml(item.text);
+            const safeUmo = escapeHtml(item.umo);
+
             if (item.type === "charter") {
                 html += `
                     <tr>
                         <td><code>-</code></td>
                         <td>${umoHtml}</td>
                         <td><span class="badge badge-purple">常驻规则</span></td>
-                        <td style="max-width: 520px;"><strong>${item.text}</strong></td>
+                        <td style="max-width: 520px;"><strong>${safeText}</strong></td>
                         <td>
                             <div class="stacked-status">
                                 <span class="badge badge-purple">常驻规则</span>
@@ -629,6 +716,12 @@ async function init() {
                 `;
             } else if (item.type === "active") {
                 const d = item.directive;
+                const safeDId = escapeHtml(d.id);
+                const safeConstraintId = escapeHtml(d.constraint_id);
+                const safeDText = escapeHtml(d.text);
+                const safeRemainingTtl = escapeHtml(d.remaining_ttl);
+                const safeTtlRounds = escapeHtml(d.ttl_rounds);
+
                 const stateBadge = d.state === "active"
                     ? `<span class="badge badge-danger">生效中</span>`
                     : `<span class="badge badge-warning">观察期 (良好)</span>`;
@@ -641,14 +734,14 @@ async function init() {
                     ? `<span class="badge badge-purple">一次性</span>`
                     : `<span class="badge badge-info">多轮</span>`;
 
-                const ttlBadge = `<span class="badge badge-secondary">${d.remaining_ttl} / ${d.ttl_rounds} 轮</span>`;
+                const ttlBadge = `<span class="badge badge-secondary">${safeRemainingTtl} / ${safeTtlRounds} 轮</span>`;
 
                 html += `
                     <tr>
-                        <td><code>${d.id}</code></td>
+                        <td><code>${safeDId}</code></td>
                         <td>${umoHtml}</td>
-                        <td><span class="badge badge-info">${d.constraint_id}</span></td>
-                        <td style="max-width: 520px;"><strong>${d.text}</strong></td>
+                        <td><span class="badge badge-info">${safeConstraintId}</span></td>
+                        <td style="max-width: 520px;"><strong>${safeDText}</strong></td>
                         <td>
                             <div class="stacked-status">
                                 ${modeBadge}
@@ -658,7 +751,7 @@ async function init() {
                             </div>
                         </td>
                         <td>
-                            <button class="btn btn-sm btn-outline-danger btn-revoke" data-umo="${item.umo}" data-id="${d.id}">
+                            <button class="btn btn-sm btn-outline-danger btn-revoke" data-umo="${safeUmo}" data-id="${safeDId}">
                                 解除规则
                             </button>
                         </td>
@@ -666,16 +759,20 @@ async function init() {
                 `;
             } else if (item.type === "expired") {
                 const d = item.directive;
+                const safeDId = escapeHtml(d.id);
+                const safeConstraintId = escapeHtml(d.constraint_id);
+                const safeDText = escapeHtml(d.text);
+
                 const modeBadge = d.mode === "once"
                     ? `<span class="badge badge-secondary">一次性</span>`
                     : `<span class="badge badge-secondary">多轮</span>`;
 
                 html += `
                     <tr>
-                        <td><code>${d.id}</code></td>
+                        <td><code>${safeDId}</code></td>
                         <td>${umoHtml}</td>
-                        <td><span class="badge badge-secondary">${d.constraint_id}</span></td>
-                        <td style="max-width: 520px; opacity: 0.75;">${d.text}</td>
+                        <td><span class="badge badge-secondary">${safeConstraintId}</span></td>
+                        <td style="max-width: 520px; opacity: 0.75;">${safeDText}</td>
                         <td>
                             <div class="stacked-status">
                                 ${modeBadge}
@@ -742,20 +839,23 @@ async function init() {
                 : `<span class="badge badge-success">运行中</span>`;
 
             const umoHtml = formatUmoDisplay(umo, s.session_name);
+            const safeUmo = escapeHtml(umo);
+            const safeRoundCounter = escapeHtml(s.round_counter || 0);
+            const safeLastEvalRound = escapeHtml(s.last_eval_round || 0);
 
             html += `
                 <tr>
                     <td>${umoHtml}</td>
-                    <td>${s.round_counter || 0} 轮</td>
-                    <td>${s.last_eval_round || 0} 轮</td>
+                    <td>${safeRoundCounter} 轮</td>
+                    <td>${safeLastEvalRound} 轮</td>
                     <td><span class="badge badge-info">${activeCount}</span></td>
                     <td>${statusBadge}</td>
                     <td>
                         <div style="display: flex; gap: 8px;">
-                            <button class="btn btn-sm btn-outline-primary btn-eval-umo" data-umo="${umo}">
+                            <button class="btn btn-sm btn-outline-primary btn-eval-umo" data-umo="${safeUmo}">
                                 检查
                             </button>
-                            <button class="btn btn-sm ${s.paused ? 'btn-primary' : 'btn-secondary'} btn-pause-umo" data-umo="${umo}" data-paused="${s.paused}">
+                            <button class="btn btn-sm ${s.paused ? 'btn-primary' : 'btn-secondary'} btn-pause-umo" data-umo="${safeUmo}" data-paused="${s.paused ? 'true' : 'false'}">
                                 ${s.paused ? '恢复' : '暂停'}
                             </button>
                         </div>
@@ -840,12 +940,16 @@ async function init() {
         let html = "";
         allLogs.slice(0, 20).forEach(item => {
             const l = item.log;
+            const safeTime = formatTime(l.timestamp);
+            const safeRound = escapeHtml(l.round || 0);
+            const safeReason = l.reason ? escapeHtml(l.reason) : '-';
+            const safeSummary = l.verdict_summary ? escapeHtml(l.verdict_summary) : '-';
             html += `
                 <tr>
-                    <td>${formatTime(l.timestamp)}</td>
-                    <td>第 ${l.round || 0} 轮</td>
-                    <td><code>${l.reason || '-'}</code></td>
-                    <td>${l.verdict_summary || '-'}</td>
+                    <td>${safeTime}</td>
+                    <td>第 ${safeRound} 轮</td>
+                    <td><code>${safeReason}</code></td>
+                    <td>${safeSummary}</td>
                 </tr>
             `;
         });
@@ -867,16 +971,20 @@ async function init() {
                 ? `<span class="badge badge-purple">一次性</span>`
                 : (m === "multi" ? `<span class="badge badge-info">多轮</span>` : `<span class="badge badge-success">自动</span>`);
 
+            const safeCId = escapeHtml(c.id);
+            const safeCName = escapeHtml(c.name);
+            const safeCDesc = c.description ? escapeHtml(c.description) : '-';
+
             html += `
                 <tr>
-                    <td><code>${c.id}</code></td>
-                    <td><strong>${c.name}</strong></td>
+                    <td><code>${safeCId}</code></td>
+                    <td><strong>${safeCName}</strong></td>
                     <td>${modeBadge}</td>
-                    <td style="max-width: 440px;">${c.description || '-'}</td>
+                    <td style="max-width: 440px;">${safeCDesc}</td>
                     <td>
                         <div style="display: flex; gap: 8px;">
-                            <button class="btn btn-sm btn-outline-primary btn-edit-c" data-id="${c.id}">编辑</button>
-                            <button class="btn btn-sm btn-outline-danger btn-del-c" data-id="${c.id}">删除</button>
+                            <button class="btn btn-sm btn-outline-primary btn-edit-c" data-id="${safeCId}">编辑</button>
+                            <button class="btn btn-sm btn-outline-danger btn-del-c" data-id="${safeCId}">删除</button>
                         </div>
                     </td>
                 </tr>
@@ -930,10 +1038,11 @@ async function init() {
 
         let html = "";
         phrases.forEach(p => {
+            const safePhrase = escapeHtml(p);
             html += `
                 <span class="tag-item">
-                    <span>${p}</span>
-                    <span class="tag-remove" data-phrase="${p}">×</span>
+                    <span>${safePhrase}</span>
+                    <span class="tag-remove" data-phrase="${safePhrase}">×</span>
                 </span>
             `;
         });
@@ -974,7 +1083,11 @@ async function init() {
         document.getElementById("cfg-max-active").value = config.max_active_directives || 3;
         
         setCustomSelectValue("select-supervisor-provider", config.supervisor_provider_id || "");
-        document.getElementById("cfg-supervisor-prompt").value = config.supervisor_prompt_template || "";
+        const promptInput = document.getElementById("cfg-supervisor-prompt");
+        if (promptInput) {
+            promptInput.placeholder = DEFAULT_SUPERVISOR_PROMPT_TEMPLATE;
+            promptInput.value = config.supervisor_prompt_template || "";
+        }
 
         document.getElementById("cfg-sentinel-heuristics").checked = config.enable_sentinel_heuristics !== false;
         setCustomSelectValue("select-sentinel-sensitivity", config.sentinel_sensitivity || "medium");
