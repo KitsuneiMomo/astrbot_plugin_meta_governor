@@ -24,6 +24,8 @@
 
 ## <img src="https://img.icons8.com/material-outlined/24/wrench.png"/> Web 后台管理
 
+![WebUI 控制面板截图](./screenshot_dashboard.png)
+
 插件内置了独立的 Web 管理页面，支持以下功能：
 
 1. **聊天状态查看与管理**：实时查看各个聊天窗口的对话轮数、当前生效的调整提醒与长期规则，支持手动解除指定提醒。
